@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthVitals · Patient Console</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f7faf9; --panel:#ffffff; --panel-2:#fbfdfc;
+    --ink:#1f2d2b; --ink-2:#4a5c58; --muted:#7b918c;
+    --line:#e4eeeb; --line-2:#d4e5e0;
+    --sage:#7fa99b; --sage-d:#5e8b7e; --mint:#b8e0d2; --mint-d:#8fceb6;
+    --blush:#f4c8b8; --coral:#e8998b; --sand:#f2ddb6; --sky:#a8d8e6;
+    --ok:#7cb894; --warn:#e0b46a; --bad:#e08374;
+    --shadow-sm:0 1px 2px rgba(31,45,43,0.04);
+    --shadow:0 4px 14px rgba(31,45,43,0.06);
+    --shadow-lg:0 12px 32px rgba(31,45,43,0.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  code, pre, .mono{font-family:'JetBrains Mono',monospace}
+
+  .shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+  @media (max-width:900px){.shell{grid-template-columns:1fr}}
+
+  .sidebar{background:var(--panel);border-right:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  @media (max-width:900px){.sidebar{display:none}}
+  .brand{display:flex;align-items:center;gap:12px;padding:4px 8px 12px;border-bottom:1px solid var(--line)}
+  .brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--sage-d),var(--mint-d));display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.05rem;box-shadow:0 4px 12px rgba(127,169,155,0.3)}
+  .brand-text h1{font-size:0.98rem;font-weight:800;letter-spacing:-0.01em;color:var(--ink)}
+  .brand-text p{font-size:0.7rem;color:var(--muted);font-weight:500}
+
+  .nav-group{display:flex;flex-direction:column;gap:2px}
+  .nav-group .label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;padding:8px 12px 6px}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;color:var(--ink-2);text-decoration:none;font-size:0.85rem;font-weight:500;cursor:pointer;transition:background 0.15s, color 0.15s;border:none;background:transparent;text-align:left;width:100%;font-family:'Inter',sans-serif}
+  .nav-item i{width:16px;font-size:0.85rem;color:var(--muted);transition:color 0.15s}
+  .nav-item:hover{background:var(--panel-2);color:var(--ink)}
+  .nav-item.active{background:#eef6f3;color:var(--sage-d);font-weight:600}
+  .nav-item.active i{color:var(--sage-d)}
+  .nav-item .badge{margin-left:auto;font-size:0.65rem;font-weight:700;background:#eef6f3;color:var(--sage-d);padding:2px 7px;border-radius:6px}
+  .sidebar-foot{margin-top:auto;padding:14px 12px;border-top:1px solid var(--line);font-size:0.72rem;color:var(--muted);line-height:1.5}
+
+  /* MOBILE NAVBAR BAR */
+  .mobile-nav-bar{display:none;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:90}
+  @media (max-width:900px){.mobile-nav-bar{display:flex}}
+  .mobile-nav-links{display:flex;gap:6px;overflow-x:auto;padding:8px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);display:none;position:sticky;top:60px;z-index:89}
+  .mobile-nav-links.show{display:flex}
+  .mobile-tab-btn{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:0.75rem;font-weight:600;color:var(--ink-2);white-space:nowrap;cursor:pointer}
+  .mobile-tab-btn.active{background:#eef6f3;color:var(--sage-d);border-color:var(--mint-d)}
+
+  .main{padding:22px 28px 40px;max-width:1400px;width:100%}
+  @media (max-width:900px){.main{padding:18px 16px 40px}}
+
+  .topbar{display:flex;align-items:center;gap:14px;padding:8px 0 22px}
+  @media (max-width:900px){.topbar{padding:12px 0 16px}}
+  .page-title{font-size:1.35rem;font-weight:800;letter-spacing:-0.02em;color:var(--ink)}
+  .page-sub{font-size:0.8rem;color:var(--muted);margin-top:2px}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s, border-color 0.15s, color 0.15s;font-size:0.9rem}
+  .icon-btn:hover{background:#eef6f3;border-color:var(--line-2);color:var(--sage-d)}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--sage-d),var(--mint-d));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.82rem;box-shadow:0 3px 10px rgba(127,169,155,0.28)}
+
+  .grid{display:grid;grid-template-columns:repeat(12, 1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow-sm);transition:box-shadow 0.2s, transform 0.2s}
+  .card:hover{box-shadow:var(--shadow)}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .card-head h3{font-size:0.9rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .card-head h3 i{color:var(--sage-d);font-size:0.9rem}
+  .card-head .meta{font-size:0.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:0.04em}
+
+  .stat-card{grid-column:span 3;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+  @media (max-width:1000px){.stat-card{grid-column:span 6}}
+  @media (max-width:560px){.stat-card{grid-column:span 12}}
+  .stat-card .k{font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em}
+  .stat-card .v{font-size:1.7rem;font-weight:800;color:var(--ink);letter-spacing:-0.02em;line-height:1;margin-top:4px}
+  .stat-card .sub{font-size:0.72rem;color:var(--ink-2);margin-top:4px}
+  .stat-card .ico{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.9rem}
+  .ico-mint{background:#e7f5ef;color:var(--sage-d)}
+  .ico-blush{background:#fbeae5;color:#c46f5e}
+  .ico-sand{background:#fbf2e0;color:#b98a3e}
+  .ico-sky{background:#e4f3f8;color:#4d8ea6}
+
+  .panel-main{grid-column:span 8;display:flex;flex-direction:column}
+  @media (max-width:1000px){.panel-main{grid-column:span 12}}
+  .panel-side{grid-column:span 4;display:flex;flex-direction:column;gap:16px}
+  @media (max-width:1000px){.panel-side{grid-column:span 12}}
+  .panel-chart{grid-column:span 8;height:360px;position:relative}
+  @media (max-width:1000px){.panel-chart{grid-column:span 12}}
+  .panel-table{grid-column:span 12}
+
+  .apps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+  @media (max-width:1100px){.apps-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:700px){.apps-grid{grid-template-columns:1fr}}
+
+  .app-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow-sm);transition:box-shadow 0.2s, transform 0.2s, border-color 0.2s;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative}
+  .app-card:hover{box-shadow:var(--shadow);transform:translateY(-2px);border-color:var(--mint-d)}
+  .app-card .try-tag{position:absolute;top:14px;right:14px;font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:4px 8px;border-radius:6px;background:var(--sage-d);color:#fff;font-family:'JetBrains Mono',monospace;opacity:0;transition:opacity 0.15s}
+  .app-card:hover .try-tag{opacity:1}
+
+  .app-hd{display:flex;align-items:center;gap:12px}
+  .app-ico{width:42px;height:42px;border-radius:11px;flex-shrink:0;background:linear-gradient(135deg,var(--sage-d),var(--mint-d));color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 4px 12px rgba(127,169,155,0.25)}
+  .app-hd .t{flex:1;min-width:0}
+  .app-hd .t .n{font-size:0.62rem;color:var(--muted);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+  .app-hd .t h4{font-size:0.92rem;font-weight:800;color:var(--ink);margin-top:2px;letter-spacing:-0.01em}
+  .app-flag{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:4px 8px;border-radius:6px;background:var(--sage-d);color:#fff;font-family:'JetBrains Mono',monospace}
+
+  .app-body p{font-size:0.81rem;color:var(--ink-2);line-height:1.55}
+  .app-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .app-chips .chip{font-size:0.64rem;font-family:'JetBrains Mono',monospace;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink-2)}
+  .app-chips .chip.hi{background:#eef6f3;color:var(--sage-d);border-color:#cfe6dd}
+
+  .scanner{background:radial-gradient(600px 300px at 100% 0%, rgba(184,224,210,0.5), transparent 60%),radial-gradient(600px 300px at 0% 100%, rgba(168,216,230,0.4), transparent 60%),linear-gradient(135deg,#eef8f4 0%,#e8f4f6 100%);border:1px solid #d6eae2;border-radius:18px;padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center}
+  @media (max-width:640px){.scanner{grid-template-columns:1fr}}
+  .scanner-left h4{font-size:1rem;font-weight:800;color:var(--ink);margin-bottom:6px}
+  .scanner-left p{font-size:0.82rem;color:var(--ink-2);margin-bottom:16px;line-height:1.5}
+  .patient-pill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line-2);padding:7px 12px;border-radius:10px;font-size:0.78rem;font-weight:600;color:var(--ink);box-shadow:var(--shadow-sm);max-width:100%}
+  .patient-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--sage-d);box-shadow:0 0 0 3px rgba(127,169,155,0.2);flex-shrink:0}
+
+  .scanner-right{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .fp-ring{width:130px;height:130px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #ffffff 0%, #eef8f4 65%, transparent 66%),conic-gradient(from 0deg, var(--mint-d) 0deg, var(--sky) 180deg, var(--mint-d) 360deg);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:transform 0.2s;box-shadow:0 10px 28px rgba(127,169,155,0.25);user-select:none}
+  .fp-ring:hover{transform:scale(1.03)}
+  .fp-ring.scanning{animation:fpSpin 1.4s linear infinite;box-shadow:0 10px 34px rgba(94,139,126,0.45)}
+  @keyframes fpSpin{to{transform:rotate(360deg) scale(1.02)}}
+  .fp-ring.success{box-shadow:0 10px 34px rgba(124,184,148,0.5)}
+  .fp-inner{width:96px;height:96px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:2.1rem;color:var(--sage-d);box-shadow:inset 0 0 0 1px var(--line-2);position:relative;z-index:1}
+  .fp-hint{font-size:0.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center}
+  .fp-bar{width:100%;max-width:200px;height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:2px}
+  .fp-bar > div{height:100%;width:0%;background:linear-gradient(90deg,var(--sage-d),var(--sky));transition:width 0.1s linear}
+
+  .searchbar{display:flex;align-items:center;gap:9px;background:#f4faf8;border:1px solid var(--line);border-radius:11px;padding:10px 14px;margin-bottom:12px}
+  .searchbar i{color:var(--muted);font-size:0.85rem}
+  .searchbar input{border:none;background:transparent;outline:none;flex:1;font-size:0.85rem;font-family:'Inter',sans-serif;color:var(--ink)}
+
+  .patient-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px}
+  .p-row{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);cursor:pointer;transition:all 0.15s}
+  .p-row:hover{background:#f2f9f7;border-color:var(--line-2)}
+  .p-row.active{background:#eef6f3;border-color:var(--mint-d);box-shadow:0 3px 10px rgba(127,169,155,0.12)}
+  .p-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--sage-d),var(--mint-d));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0}
+  .p-info{flex:1;min-width:0}
+  .p-info .name{font-size:0.85rem;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .p-info .meta{font-size:0.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+  .p-tag{font-size:0.65rem;font-weight:700;padding:4px 8px;border-radius:20px;letter-spacing:0.03em;text-transform:uppercase;flex-shrink:0}
+  .p-tag.ok{background:#e3f2e8;color:#3f7d57}
+  .p-tag.warn{background:#fbf2dd;color:#956b23}
+  .p-tag.bad{background:#fbe5e0;color:#b04f3e}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;font-size:0.82rem;transition:transform 0.15s, box-shadow 0.15s, background 0.15s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-sage{background:var(--sage-d);color:#fff}
+  .btn-sage:hover{background:#4e7a6d;box-shadow:0 8px 20px rgba(94,139,126,0.3)}
+  .btn-soft{background:#eef6f3;color:var(--sage-d)}
+  .btn-ghost{background:transparent;color:var(--ink-2);border:1px solid var(--line)}
+  .btn-danger{background:#fbe5e0;color:#b04f3e}
+  .btn-sm{padding:8px 12px;font-size:0.76rem}
+
+  table.hv-table{width:100%;border-collapse:collapse;font-size:0.82rem}
+  table.hv-table th{text-align:left;padding:9px 12px;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);background:var(--panel-2);border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace}
+  table.hv-table td{padding:11px 12px;border-bottom:1px solid var(--line)}
+  table.hv-table tr:hover td{background:#fafdfc}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:0.7rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+  .pill.ok{background:#e3f2e8;color:#3f7d57}.pill.warn{background:#fbf2dd;color:#956b23}.pill.bad{background:#fbe5e0;color:#b04f3e}
+  .icon-del{width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:#c98a7c;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+  .icon-del:hover{background:#fbe5e0;color:#b04f3e}
+
+  .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+  .field label{display:block;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:var(--muted);margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+  .field input, .field select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);font-family:'Inter',sans-serif;font-size:0.88rem;color:var(--ink);outline:none}
+
+  .confirm-bar{display:none;padding:12px 14px;border-radius:12px;background:#fbe5e0;border:1px solid #f1c3b8;margin-top:12px}
+  .confirm-bar.show{display:block}
+  .confirm-bar .msg{font-size:0.8rem;font-weight:600;color:#7a3828;margin-bottom:10px}
+  .confirm-bar .acts{display:flex;gap:8px}
+  .confirm-bar .acts button{flex:1;padding:8px;border-radius:9px;border:none;cursor:pointer;font-weight:700;font-size:0.76rem}
+  .confirm-bar .no{background:#fff;color:#7a3828}.confirm-bar .yes{background:#b04f3e;color:#fff}
+
+  .modal{position:fixed;inset:0;background:rgba(31,45,43,0.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:24px;z-index:1000}
+  .modal.show{display:flex}
+  .modal-card{background:var(--panel);border-radius:18px;width:100%;max-width:400px;padding:24px;box-shadow:var(--shadow-lg)}
+  .modal-card h3{font-size:1.05rem;font-weight:800;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:9px}
+  .modal-card p{font-size:0.82rem;color:var(--muted);margin-bottom:16px}
+  .modal-acts{display:flex;gap:8px}
+  .modal-acts button{flex:1;padding:11px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:0.85rem}
+  .modal-acts .cancel{background:#f0f6f4;color:var(--ink-2)}
+  .modal-acts .save{background:var(--sage-d);color:#fff}
+
+  .app-modal-card{background:var(--panel);border-radius:18px;width:100%;max-width:960px;max-height:90vh;display:flex;flex-direction:column;padding:0;box-shadow:var(--shadow-lg);overflow:hidden}
+  .app-modal-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#f5fbf9,#eef7f8)}
+  .app-modal-head h3{font-size:1.05rem;font-weight:800;color:var(--ink);margin:0}
+  .app-modal-head p{font-size:0.78rem;color:var(--muted);margin:2px 0 0 0}
+  .app-modal-head .close-x{margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.15rem;padding:6px 10px;border-radius:8px}
+
+  .app-modal-body{padding:22px 24px;overflow-y:auto;flex:1;display:grid;grid-template-columns:280px 1fr;gap:20px;transition:all 0.3s ease}
+  @media (max-width:860px){.app-modal-body{grid-template-columns:1fr}}
+
+  /* PHONE SIMULATOR */
+  .walk-phone{background:#0f172a; border-radius:36px; padding:10px; box-shadow:0 20px 50px rgba(15,23,42,0.25); max-width:280px; margin:0 auto; position:sticky; top:0; z-index:20; align-self:start; transition:all 0.3s ease}
+  .walk-inner{background:linear-gradient(180deg,#f8fbfa 0%,#eef6f3 100%); border-radius:28px; padding:16px 14px 18px; display:flex; flex-direction:column; gap:12px; position:relative; overflow:hidden}
+  .walk-notch{width:70px;height:20px;background:#0f172a;border-radius:20px;margin:0 auto 4px}
+  .walk-title{font-size:0.72rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;text-align:center}
+  .walk-steps{font-size:2.6rem;font-weight:800;color:var(--ink);letter-spacing:-0.03em;text-align:center;line-height:1;font-family:'JetBrains Mono',monospace}
+  .walk-steps small{font-size:0.7rem;color:var(--muted);font-weight:600;display:block;margin-top:4px;font-family:'Inter',sans-serif}
+  .walk-progress{height:8px;border-radius:4px;background:#e4eeeb;overflow:hidden;margin:2px 4px 0}
+  .walk-progress > div{height:100%;width:0%;background:linear-gradient(90deg,var(--sage-d),var(--sky));transition:width 0.15s linear}
+
+  .walk-btn{width:100%;padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:0.82rem;background:var(--sage-d);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .walk-btn.active{background:linear-gradient(90deg,var(--sage-d),var(--sky))}
+  .walk-foot{display:flex;gap:8px;margin-top:6px}
+  .walk-foot button{flex:1;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);cursor:pointer;font-weight:600;font-size:0.72rem}
+
+  .steps-right{display:flex;flex-direction:column;gap:16px;min-width:0;position:relative;z-index:1}
+  .steps-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .step-stat{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+  .step-stat .k{font-size:0.66rem;color:var(--muted);font-weight:700;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+  .step-stat .v{font-size:1.5rem;font-weight:800;color:var(--ink);font-family:'JetBrains Mono',monospace}
+  .step-stat .sub{font-size:0.7rem;color:var(--muted)}
+  .step-stat.accent .v{color:var(--sage-d)}
+  .step-stat.goal .v{color:var(--sky)}
+
+  .steps-charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:760px){.steps-charts{grid-template-columns:1fr}}
+  .steps-chart-card{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:14px;position:relative;overflow:hidden}
+  .steps-chart-card h5{font-size:0.72rem;font-weight:800;color:var(--ink);margin-bottom:10px;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+  .steps-chart-box{position:relative;height:180px;overflow:hidden}
+  .steps-chart-box > canvas{position:absolute !important;inset:0 !important;max-width:100% !important;max-height:100% !important}
+
+  .steps-manual{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+  .steps-entries{margin-top:4px}
+  .steps-entries h5{font-size:0.72rem;font-weight:800;color:var(--ink);margin-bottom:8px;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+  .steps-entries-list{max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+  .entry-row{background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:0.78rem}
+  .entry-row .top{display:flex;align-items:center;gap:8px}
+  .entry-row .badge{font-size:0.6rem;font-weight:700;padding:2px 6px;border-radius:4px;background:#eef6f3;color:var(--sage-d);font-family:'JetBrains Mono',monospace}
+  .entry-row .time{font-size:0.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto}
+
+  /* Array Documentation Styles */
+  .array-code-box { background: #1f2d2b; color: #c5dad4; padding: 12px 14px; border-radius: 10px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; margin-top: 10px; margin-bottom: 10px; overflow-x: auto; }
+  .array-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .array-chip { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: #eef6f3; color: var(--sage-d); border: 1px solid var(--line); }
+
+  .dl-panel{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow-lg);max-width:520px;width:calc(100% - 40px);z-index:1500;display:none}
+  .dl-panel.show{display:block}
+  .dl-panel h4{font-size:0.88rem;font-weight:800;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .dl-panel p{font-size:0.78rem;color:var(--muted);margin-bottom:12px}
+  .dl-panel .acts{display:flex;gap:8px}
+
+  .app-modal-foot{padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--panel-2)}
+  .app-modal-foot .stats{font-size:0.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+  .section-title{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .section-title h2{font-size:1.05rem;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:10px}
+  .section-title h2 .num{font-family:'JetBrains Mono',monospace;font-size:0.65rem;font-weight:700;color:var(--sage-d);background:#eef6f3;padding:3px 9px;border-radius:6px}
+  .section-title .desc{font-size:0.82rem;color:var(--muted);max-width:560px}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- DESKTOP SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i class="fas fa-heart-pulse"></i></div>
+      <div class="brand-text">
+        <h1>HealthVitals</h1>
+        <p>Patient Console</p>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <span class="label">Main</span>
+      <button class="nav-item active" onclick="switchTab('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</button>
+      <button class="nav-item" onclick="switchTab('patients')"><i class="fas fa-user-injured"></i> Patients <span class="badge" id="patient-count-badge">3</span></button>
+      <button class="nav-item" onclick="switchTab('apps')"><i class="fas fa-cubes"></i> App Modules <span class="badge">6</span></button>
+      <button class="nav-item" onclick="switchTab('structures')"><i class="fas fa-code-branch"></i> Array Data Structures <span class="badge" style="background:#eef8f4; color:var(--sage-d)">Docs</span></button>
+    </div>
+
+    <div class="nav-group">
+      <span class="label">System</span>
+      <button class="nav-item" onclick="exportData()"><i class="fas fa-download"></i> Export Data</button>
+    </div>
+
+    <div class="sidebar-foot">
+      <strong>HealthVitals Bio</strong><br>
+      MySQL + AJAX Patient Console<br>
+      v2.6 Presentation Suite
+    </div>
+  </aside>
+
+  <!-- MOBILE NAVIGATION BAR -->
+  <div>
+    <div class="mobile-nav-bar">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="brand-mark" style="width:32px; height:32px; font-size:0.9rem;"><i class="fas fa-heart-pulse"></i></div>
+        <span style="font-weight:800; font-size:0.95rem;">HealthVitals</span>
+      </div>
+      <button class="icon-btn" onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
+    </div>
+    
+    <div class="mobile-nav-links" id="mobile-nav-links">
+      <button class="mobile-tab-btn active" onclick="switchTab('dashboard'); toggleMobileMenu();">Dashboard</button>
+      <button class="mobile-tab-btn" onclick="switchTab('patients'); toggleMobileMenu();">Patients</button>
+      <button class="mobile-tab-btn" onclick="switchTab('apps'); toggleMobileMenu();">App Modules</button>
+      <button class="mobile-tab-btn" onclick="switchTab('structures'); toggleMobileMenu();">Array Data</button>
+      <button class="mobile-tab-btn" onclick="exportData(); toggleMobileMenu();">Export</button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main" style="padding-top:12px;">
+      <div class="topbar">
+        <div>
+          <div class="page-title" id="main-page-title">Patient Vitals Dashboard</div>
+          <div class="page-sub">Real-time health metric recording, biometric authentication, and clinical tracking</div>
+        </div>
+        <div class="topbar-right">
+          <button class="icon-btn" title="Refresh Data" onclick="refreshData()"><i class="fas fa-sync-alt"></i></button>
+          <div class="avatar" title="Dr. Administrator">AD</div>
+        </div>
+      </div>
+
+      <!-- TAB 1: DASHBOARD -->
+      <div id="tab-dashboard" class="tab-content">
+        <div class="grid">
+          <div class="card stat-card">
+            <span class="k">Active Patients</span>
+            <div class="v" id="stat-patients">3</div>
+            <div class="sub">Registered in MySQL</div>
+            <div class="ico ico-mint"><i class="fas fa-users"></i></div>
+          </div>
+          <div class="card stat-card">
+            <span class="k">Vitals Logged</span>
+            <div class="v" id="stat-logs">12</div>
+            <div class="sub">Total metrics recorded</div>
+            <div class="ico ico-sky"><i class="fas fa-heartbeat"></i></div>
+          </div>
+          <div class="card stat-card">
+            <span class="k">Alert Thresholds</span>
+            <div class="v" id="stat-alerts">1</div>
+            <div class="sub">Requires clinical review</div>
+            <div class="ico ico-blush"><i class="fas fa-exclamation-triangle"></i></div>
+          </div>
+          <div class="card stat-card">
+            <span class="k">DB Status</span>
+            <div class="v" style="font-size:1.3rem; margin-top:8px; color:var(--ok)"><i class="fas fa-check-circle"></i> Connected</div>
+            <div class="sub">MySQL 8.0 (healthvitals_db)</div>
+            <div class="ico ico-sand"><i class="fas fa-server"></i></div>
+          </div>
+
+          <div class="card panel-main scanner">
+            <div class="scanner-left">
+              <h4><i class="fas fa-fingerprint" style="color:var(--sage-d)"></i> Biometric Patient Identification</h4>
+              <p>Scan patient fingerprint to instantly load records, verify identity, and open rapid vitals entry console.</p>
+              <div class="patient-pill" id="active-patient-pill">
+                <div class="dot"></div>
+                <span id="current-patient-name">Select or scan patient to begin</span>
+              </div>
+            </div>
+            <div class="scanner-right">
+              <div class="fp-ring" id="fp-scanner" onclick="triggerBiometricScan()" title="Click to simulate biometric fingerprint scan">
+                <div class="fp-inner"><i class="fas fa-fingerprint" id="fp-icon" style="color:var(--sage-d); font-size:2rem;"></i></div>
+              </div>
+              <div class="fp-hint" id="fp-hint">Click sensor to scan ID</div>
+              <div class="fp-bar"><div id="fp-progress"></div></div>
+            </div>
+          </div>
+
+          <div class="card panel-side">
+            <div class="card-head">
+              <h3><i class="fas fa-user-check"></i> Patient Directory</h3>
+              <span class="meta">MySQL</span>
+            </div>
+            <div class="searchbar">
+              <i class="fas fa-search"></i>
+              <input type="text" id="patient-search" placeholder="Search patient name or ID..." oninput="filterPatients()">
+            </div>
+            <div class="patient-list" id="patient-list-container"></div>
+            <button class="btn btn-soft btn-sm" onclick="openAddPatientModal()"><i class="fas fa-user-plus"></i> Register New Patient</button>
+          </div>
+
+          <div class="card panel-chart">
+            <div class="card-head">
+              <h3><i class="fas fa-chart-line"></i> Patient Vitals Trend Analysis</h3>
+              <select id="chart-metric-select" class="field" style="padding:4px 8px; font-size:0.75rem; width:130px" onchange="updateChartData()">
+                <option value="bp">Blood Pressure</option>
+                <option value="hr">Heart Rate (BPM)</option>
+                <option value="temp">Temperature (°C)</option>
+                <option value="spo2">SpO2 (%)</option>
+              </select>
+            </div>
+            <div style="position:relative; height:280px; width:100%">
+              <canvas id="vitalsChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card panel-side">
+            <div class="card-head">
+              <h3><i class="fas fa-plus-circle"></i> Record Vitals</h3>
+              <span class="meta">AJAX POST</span>
+            </div>
+            <form id="vitals-form" onsubmit="submitVitals(event)">
+              <div class="field-grid" style="grid-template-columns:1fr; gap:10px">
+                <div class="field"><label>Select Patient</label><select id="vitals-patient-id" required></select></div>
+                <div class="field">
+                  <label>Metric Type</label>
+                  <select id="vitals-type" onchange="toggleMetricInputs()" required>
+                    <option value="BP">Blood Pressure (mmHg)</option>
+                    <option value="HR">Heart Rate (BPM)</option>
+                    <option value="TEMP">Temperature (°C)</option>
+                    <option value="SPO2">Blood Oxygen (SpO2 %)</option>
+                    <option value="GLUCOSE">Blood Glucose (mmol/L)</option>
+                  </select>
+                </div>
+                <div class="field" id="field-val-1"><label>Systolic / Value</label><input type="number" id="vitals-val1" step="0.1" placeholder="e.g. 120" required></div>
+                <div class="field" id="field-val-2"><label>Diastolic (for BP)</label><input type="number" id="vitals-val2" step="0.1" placeholder="e.g. 80"></div>
+                <div class="field"><label>Clinical Notes</label><input type="text" id="vitals-notes" placeholder="Optional remarks..."></div>
+              </div>
+              <div style="margin-top:14px">
+                <button type="submit" class="btn btn-sage" style="width:100%; justify-content:center"><i class="fas fa-save"></i> Save to MySQL Database</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card panel-table">
+            <div class="card-head">
+              <h3><i class="fas fa-table"></i> Recent Vitals Logs</h3>
+              <div class="row" style="gap:8px">
+                <button class="btn btn-ghost btn-sm" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
+                <button class="btn btn-danger btn-sm" onclick="confirmClearLogs()"><i class="fas fa-trash-alt"></i> Clear Logs</button>
+              </div>
+            </div>
+            <div class="confirm-bar" id="clear-confirm-bar">
+              <div class="msg"><strong>Are you sure you want to delete all logged vitals?</strong> Action cannot be undone.</div>
+              <div class="acts">
+                <button class="no" onclick="cancelClearLogs()">Cancel</button>
+                <button class="yes" onclick="executeClearLogs()">Yes, Clear All Logs</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto; margin-top:10px">
+              <table class="hv-table">
+                <thead>
+                  <tr><th>Log ID</th><th>Patient Name</th><th>Metric</th><th>Recorded Value</th><th>Status</th><th>Timestamp</th><th>Notes</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody id="vitals-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB 2: PATIENTS -->
+      <div id="tab-patients" class="tab-content" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:0">
+            <div>
+              <h2>Patient Directory Management <span class="num">MySQL Table: patients</span></h2>
+              <div class="desc">Manage registered patient profiles, biometric token mappings, and emergency contact details.</div>
+            </div>
+            <button class="btn btn-sage" onclick="openAddPatientModal()"><i class="fas fa-user-plus"></i> Register New Patient</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="overflow-x:auto">
+            <table class="hv-table">
+              <thead>
+                <tr><th>Patient ID</th><th>Full Name</th><th>Age / Gender</th><th>Phone / Contact</th><th>Biometric Token</th><th>Medical Condition</th><th style="text-align:right">Actions</th></tr>
+              </thead>
+              <tbody id="full-patient-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: APP MODULES -->
+      <div id="tab-apps" class="tab-content" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:0">
+            <div>
+              <h2>HealthVitals Application Suites <span class="num">6 Integrated Modules</span></h2>
+              <div class="desc">Explore and launch live interactive companion applications built into the HealthVitals Bio ecosystem for presentation.</div>
+            </div>
+          </div>
+        </div>
+        <div class="apps-grid">
+          <div class="app-card" onclick="openModuleModal('steps')">
+            <span class="try-tag">Live Demo</span>
+            <div class="app-hd">
+              <div class="app-ico"><i class="fas fa-walking"></i></div>
+              <div class="t"><span class="n">Module 01</span><h4>StepTracker Pro</h4></div>
+              <span class="app-flag">Active</span>
+            </div>
+            <div class="app-body">
+              <p>Pedometer simulator with real-time step acceleration, daily progress rings, and historical charts.</p>
+              <div class="app-chips"><span class="chip hi">Step Counter</span><span class="chip hi">Chart.js</span></div>
+            </div>
+          </div>
+
+          <div class="app-card" onclick="openModuleModal('meds')">
+            <span class="try-tag">Live Demo</span>
+            <div class="app-hd">
+              <div class="app-ico" style="background:linear-gradient(135deg,#c46f5e,#e8998b)"><i class="fas fa-pills"></i></div>
+              <div class="t"><span class="n">Module 02</span><h4>Medication Adherence</h4></div>
+              <span class="app-flag">Active</span>
+            </div>
+            <div class="app-body">
+              <p>Schedule prescriptions, track patient adherence rates, and trigger automated refill alerts.</p>
+              <div class="app-chips"><span class="chip hi">Prescriptions</span><span class="chip">SMS Reminders</span></div>
+            </div>
+          </div>
+
+          <div class="app-card" onclick="openModuleModal('triage')">
+            <span class="try-tag">Live Demo</span>
+            <div class="app-hd">
+              <div class="app-ico" style="background:linear-gradient(135deg,#b98a3e,#f2ddb6); color:#fff"><i class="fas fa-stethoscope"></i></div>
+              <div class="t"><span class="n">Module 03</span><h4>Clinical Triage AI</h4></div>
+              <span class="app-flag">Active</span>
+            </div>
+            <div class="app-body">
+              <p>Assess symptoms against epidemiological databases to generate urgency ratings and triage protocols.</p>
+              <div class="app-chips"><span class="chip hi">ICD-10 Mapping</span><span class="chip">Urgency Score</span></div>
+            </div>
+          </div>
+
+          <div class="app-card" onclick="openModuleModal('telehealth')">
+            <span class="try-tag">Live Demo</span>
+            <div class="app-hd">
+              <div class="app-ico" style="background:linear-gradient(135deg,#4d8ea6,#a8d8e6)"><i class="fas fa-video"></i></div>
+              <div class="t"><span class="n">Module 04</span><h4>Telehealth Consultations</h4></div>
+              <span class="app-flag">Active</span>
+            </div>
+            <div class="app-body">
+              <p>Virtual video consultations between patients and specialists with integrated WebRTC video rooms.</p>
+              <div class="app-chips"><span class="chip hi">WebRTC Rooms</span><span class="chip">Doctor Notes</span></div>
+            </div>
+          </div>
+
+          <div class="app-card" onclick="openModuleModal('ehr')">
+            <span class="try-tag">Live Demo</span>
+            <div class="app-hd">
+              <div class="app-ico" style="background:linear-gradient(135deg,#5e8b7e,#7fa99b)"><i class="fas fa-file-medical-alt"></i></div>
+              <div class="t"><span class="n">Module 05</span><h4>Electronic Health Records</h4></div>
+              <span class="app-flag">Active</span>
+            </div>
+            <div class="app-body">
+              <p>Centralized patient medical history, clinical notes, immunization records, and secure hospital file transfer.</p>
+              <div class="app-chips"><span class="chip hi">HL7 / FHIR</span><span class="chip">Secure Vault</span></div>
+            </div>
+          </div>
+
+          <div class="app-card" onclick="openModuleModal('pathology')">
+            <span class="try-tag">Live Demo</span>
+            <div class="app-hd">
+              <div class="app-ico" style="background:linear-gradient(135deg,#8a5a05,#fef1c9); color:#8a5a05"><i class="fas fa-flask"></i></div>
+              <div class="t"><span class="n">Module 06</span><h4>Pathology & Lab Results</h4></div>
+              <span class="app-flag">Active</span>
+            </div>
+            <div class="app-body">
+              <p>Real-time laboratory test uploads, blood panel biomarkers, urinalysis reports, and automated flagging.</p>
+              <div class="app-chips"><span class="chip hi">Lab Panels</span><span class="chip">Biomarkers</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: ARRAY DATA STRUCTURES & ARCHITECTURAL EXPLANATION -->
+      <div id="tab-structures" class="tab-content" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:0">
+            <div>
+              <h2>Real-World Array Applications & Architecture <span class="num">Data Structures Rationale</span></h2>
+              <div class="desc">Comprehensive technical explanation of why contiguous memory arrays were chosen over other data structures in HealthVitals Bio.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px; background:linear-gradient(135deg,#f5fbf9 0%,#eef7f8 100%); border-color:#cfe6dd">
+          <div class="card-head">
+            <h3><i class="fas fa-question-circle" style="color:var(--sage-d)"></i> Why We Chose Arrays in HealthVitals (And Why Not Other Data Structures)</h3>
+            <span class="meta">Architectural Decision</span>
+          </div>
+          <div style="font-size:0.84rem; color:var(--ink-2); line-height:1.7; display:flex; flex-direction:column; gap:12px">
+            <p>In developing the <strong>HealthVitals Bio</strong> console, choosing the right underlying data structure was critical for performance during real-time patient monitoring and rapid clinical decision-making. We deliberately selected <strong>contiguous memory arrays</strong> over alternative data structures (such as linked lists, trees, or hash tables) for several key reasons:</p>
+            
+            <ul style="padding-left:20px; display:flex; flex-direction:column; gap:8px">
+              <li><strong>$O(1)$ Constant-Time Index Access for Time-Series Data:</strong> In medical charting, accessing specific hourly logs or specific patient indices must be instantaneous. Arrays allow direct pointer arithmetic (`memory_address = base + index * size`), providing $O(1)$ access speed. A linked list, by contrast, would require $O(n)$ traversal to reach the $n$-th vital reading.</li>
+              <li><strong>Hardware CPU Cache Locality:</strong> Because array elements are stored contiguously in memory, CPU caching pre-loads adjacent data elements automatically. When rendering tabular logs or mapping charts, iterative traversal through arrays is significantly faster than traversing pointer-based nodes in linked lists, which cause frequent CPU cache misses.</li>
+              <li><strong>Seamless Compatibility with Charting Libraries:</strong> Modern visualization engines like Chart.js strictly require sequential coordinate data in native array formats (`labels: [...]` and `data: [...]`). Storing telemetry directly in arrays eliminates costly data transformation overhead.</li>
+              <li><strong>Why Not Linked Lists?</strong> While linked lists offer $O(1)$ insertions at arbitrary points, clinical logs in HealthVitals are primarily append-only chronological streams and indexed lookups. Linked lists lack index-based direct access and consume excessive memory overhead storing pointer references for every single vital record.</li>
+              <li><strong>Why Not Hash Tables Alone?</strong> While hash tables provide fast key-value lookups, they fail to maintain inherent chronological order. Clinical trending requires sequential time-series arrangement, which arrays provide naturally.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card" style="grid-column: span 6">
+            <div class="card-head">
+              <h3><i class="fas fa-procedures"></i> 01 / CLINICAL TRIAGE</h3>
+              <span class="meta">Priority Queue</span>
+            </div>
+            <p style="font-size:0.82rem; color:var(--ink-2); margin-bottom:8px">Patients arrive with priority score 1–5. Parallel arrays hold IDs and priorities; sorting the array yields treatment order.</p>
+            <div class="array-code-box">const ids = ["P-104", "P-108"];<br>const priority = [3, 5];</div>
+            <div class="array-chips"><span class="array-chip">O(n log n) sort</span><span class="array-chip">parallel arrays</span></div>
+          </div>
+
+          <div class="card" style="grid-column: span 6">
+            <div class="card-head">
+              <h3><i class="fas fa-heartbeat"></i> 02 / PATIENT MONITORS</h3>
+              <span class="meta">Vitals Stream</span>
+            </div>
+            <p style="font-size:0.82rem; color:var(--ink-2); margin-bottom:8px">Continuous physiological monitoring feeds incoming metric values into a fixed-capacity ring buffer array to update charts.</p>
+            <div class="array-code-box">const vitalsBuffer = [120, 125, 130, 128];<br>vitalsBuffer.push(newReading);</div>
+            <div class="array-chips"><span class="array-chip">O(1) push</span><span class="array-chip">Chart.js mapping</span></div>
+          </div>
+
+          <div class="card" style="grid-column: span 6">
+            <div class="card-head">
+              <h3><i class="fas fa-walking"></i> 03 / FITNESS</h3>
+              <span class="meta">Step Log</span>
+            </div>
+            <p style="font-size:0.82rem; color:var(--ink-2); margin-bottom:8px">Two ways to record: simulate a walk on the phone (auto-counts steps), or type them manually. Press Save and charts go full-width.</p>
+            <div class="array-code-box">const steps = new Array(24); // index = hour<br>steps[14]; // 2 PM count -> O(1)</div>
+            <div class="array-chips"><span class="array-chip">O(1) by hour</span><span class="array-chip">daily avg</span><span class="array-chip">weekly chart</span></div>
+          </div>
+
+          <div class="card" style="grid-column: span 6">
+            <div class="card-head">
+              <h3><i class="fas fa-flask"></i> 04 / LABORATORY</h3>
+              <span class="meta">Inventory Matrix</span>
+            </div>
+            <p style="font-size:0.82rem; color:var(--ink-2); margin-bottom:8px">Laboratory test panels and donor blood units are grouped by blood type using structured array lookups for emergencies.</p>
+            <div class="array-code-box">const bloodPacks = ["A+", "O-", "B+", "O+"];<br>const inventory = [14, 8, 22, 31];</div>
+            <div class="array-chips"><span class="array-chip">O(1) lookup</span><span class="array-chip">array matrix</span><span class="array-chip">lab panels</span></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-head">
+            <h3><i class="fas fa-table"></i> Array Complexity Reference</h3>
+            <span class="meta">Time & Space Costs</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="hv-table">
+              <thead><tr><th>Operation</th><th>Complexity</th><th>Reason</th></tr></thead>
+              <tbody>
+                <tr><td>Access by index</td><td><code>O(1)</code></td><td>Direct pointer arithmetic</td></tr>
+                <tr><td>Insert at end</td><td><code>O(1) amortized</code></td><td>Push to next free slot</td></tr>
+                <tr><td>Insert at beginning</td><td><code>O(n)</code></td><td>All elements shift right</td></tr>
+                <tr><td>Insert in middle</td><td><code>O(n)</code></td><td>Elements after index shift</td></tr>
+                <tr><td>Delete at end</td><td><code>O(1)</code></td><td>Decrement length only</td></tr>
+                <tr><td>Delete at beginning</td><td><code>O(n)</code></td><td>All remaining shift left</td></tr>
+                <tr><td>Search (unsorted)</td><td><code>O(n)</code></td><td>Must check every element</td></tr>
+                <tr><td>Search (sorted)</td><td><code>O(log n)</code></td><td>Binary search halves space</td></tr>
+                <tr><td>Sort</td><td><code>O(n log n)</code></td><td>Timsort / quicksort</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- MODAL: ADD PATIENT -->
+<div class="modal" id="patient-modal">
+  <div class="modal-card" style="max-width:460px">
+    <h3><i class="fas fa-user-plus"></i> Register Patient</h3>
+    <p>Add a new patient record into the MySQL database.</p>
+    <div class="field-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px">
+      <div class="field" style="grid-column:span 2"><label>Full Name</label><input type="text" id="new-p-name" placeholder="e.g. Kwame Mensah" required></div>
+      <div class="field"><label>Age</label><input type="number" id="new-p-age" placeholder="e.g. 42" required></div>
+      <div class="field"><label>Gender</label><select id="new-p-gender"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+      <div class="field" style="grid-column:span 2"><label>Phone Number</label><input type="text" id="new-p-phone" placeholder="+233 XX XXX XXXX" required></div>
+      <div class="field" style="grid-column:span 2"><label>Medical Condition</label><input type="text" id="new-p-cond" placeholder="e.g. Hypertension"></div>
+    </div>
+    <div class="modal-acts">
+      <button class="cancel" onclick="closeAddPatientModal()">Cancel</button>
+      <button class="save" onclick="saveNewPatient()">Save Patient</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: APP MODULE 1 - STEPS -->
+<div class="modal" id="steps-modal">
+  <div class="app-modal-card">
+    <div class="app-modal-head">
+      <div class="app-ico"><i class="fas fa-walking"></i></div>
+      <div>
+        <h3>StepTracker Pro · Interactive Pedometer</h3>
+        <p>Simulate step counting, track distance, calories burned, and log activity directly to MySQL.</p>
+      </div>
+      <button class="close-x" onclick="closeModuleModal('steps')"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <div class="app-modal-body" id="steps-modal-body" style="grid-template-columns: 280px 1fr;">
+      <div class="walk-phone" id="walk-phone-container">
+        <div class="walk-inner">
+          <div class="walk-notch"></div>
+          <div class="walk-title">Live Step Counter</div>
+          <div class="walk-steps" id="phone-steps-display">4,820<small>Steps Today</small></div>
+          <div class="walk-progress"><div id="phone-progress-bar" style="width:60%"></div></div>
+          <div class="walk-goal" style="font-size:0.7rem; color:var(--muted); text-align:center">Goal: 8,000 steps</div>
+          <button class="walk-btn" id="walk-action-btn" onclick="toggleWalkingSimulation()">
+            <i class="fas fa-play" id="walk-btn-icon"></i> <span id="walk-btn-text">Start Simulation</span>
+          </button>
+          <div class="walk-foot">
+            <button onclick="resetSteps()"><i class="fas fa-redo"></i> Reset</button>
+            <button onclick="syncStepsToDB()"><i class="fas fa-cloud-upload-alt"></i> Sync DB</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="steps-right" id="steps-right-container">
+        <div class="steps-stats">
+          <div class="step-stat"><span class="k">Distance</span><div class="v" id="walk-dist-val">3.64 km</div><span class="sub">Estimated GPS</span></div>
+          <div class="step-stat accent"><span class="k">Calories</span><div class="v" id="walk-cal-val">245 kcal</div><span class="sub">Active burn</span></div>
+          <div class="step-stat goal"><span class="k">Completion</span><div class="v" id="walk-pct-val">60%</div><span class="sub">Daily target</span></div>
+        </div>
+
+        <div class="steps-charts">
+          <div class="steps-chart-card"><h5>Hourly Activity</h5><div class="steps-chart-box"><canvas id="stepsHourlyChart"></canvas></div></div>
+          <div class="steps-chart-card"><h5>Weekly Overview</h5><div class="steps-chart-box"><canvas id="stepsWeeklyChart"></canvas></div></div>
+        </div>
+
+        <div class="steps-manual">
+          <div class="field"><label>Log Manual Steps</label><input type="number" id="manual-steps-input" placeholder="e.g. 1500"></div>
+          <button class="btn btn-sage" onclick="addManualSteps()"><i class="fas fa-plus"></i> Add</button>
+        </div>
+
+        <div class="steps-entries">
+          <h5>Sync Log History</h5>
+          <div class="steps-entries-list" id="steps-entries-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="app-modal-foot">
+      <div class="stats" id="steps-sync-status">Status: Connected to MySQL (Table: patient_steps)</div>
+      <button class="btn btn-sage btn-sm" onclick="closeModuleModal('steps')"><i class="fas fa-check"></i> Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: APP MODULE 2 - MEDS -->
+<div class="modal" id="meds-modal">
+  <div class="app-modal-card" style="max-width:700px">
+    <div class="app-modal-head">
+      <div class="app-ico" style="background:linear-gradient(135deg,#c46f5e,#e8998b)"><i class="fas fa-pills"></i></div>
+      <div>
+        <h3>Medication Adherence & Prescription Tracker</h3>
+        <p>Active prescriptions and automated dosage reminders for patients.</p>
+      </div>
+      <button class="close-x" onclick="closeModuleModal('meds')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="app-modal-body" style="grid-template-columns:1fr">
+      <div class="field-grid" style="margin-bottom:12px">
+        <div class="field"><label>Patient Name</label><input type="text" value="Kofi Mensah"></div>
+        <div class="field"><label>Medication Name</label><input type="text" id="med-name" placeholder="e.g. Lisinopril 10mg"></div>
+        <div class="field"><label>Frequency</label><select id="med-freq"><option>Once daily (Morning)</option><option>Twice daily</option><option>As needed</option></select></div>
+      </div>
+      <button class="btn btn-sage" onclick="addPrescription()"><i class="fas fa-plus-circle"></i> Add Prescription</button>
+      <div style="margin-top:16px">
+        <h5 style="margin-bottom:8px; font-size:0.75rem; font-family:'JetBrains Mono',monospace; text-transform:uppercase; color:var(--muted)">Active Prescriptions</h5>
+        <div id="meds-list" style="display:flex; flex-direction:column; gap:8px">
+          <div class="entry-row"><div class="top"><span class="badge">Lisinopril 10mg</span><span class="time">Once daily · 92% Adherence</span></div></div>
+          <div class="entry-row"><div class="top"><span class="badge">Metformin 500mg</span><span class="time">Twice daily · 88% Adherence</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="app-modal-foot"><div class="stats">Status: Live Prescription Vault Active</div><button class="btn btn-sage btn-sm" onclick="closeModuleModal('meds')">Close</button></div>
+  </div>
+</div>
+
+<!-- MODAL: APP MODULE 3 - TRIAGE -->
+<div class="modal" id="triage-modal">
+  <div class="app-modal-card" style="max-width:700px">
+    <div class="app-modal-head">
+      <div class="app-ico" style="background:linear-gradient(135deg,#b98a3e,#f2ddb6); color:#fff"><i class="fas fa-stethoscope"></i></div>
+      <div>
+        <h3>Clinical Symptom Triage AI</h3>
+        <p>Assess patient symptoms against clinical triage protocols.</p>
+      </div>
+      <button class="close-x" onclick="closeModuleModal('triage')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="app-modal-body" style="grid-template-columns:1fr">
+      <div class="field"><label>Describe Symptoms</label><input type="text" id="triage-input" placeholder="e.g. Severe headache, dizziness, chest tightness"></div>
+      <button class="btn btn-sage" style="margin-top:12px" onclick="runTriageAI()"><i class="fas fa-brain"></i> Run Triage Analysis</button>
+      <div id="triage-result" style="margin-top:16px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:16px; display:none">
+        <h4 style="color:var(--bad); margin-bottom:6px"><i class="fas fa-exclamation-circle"></i> Urgency Level: High (Priority 2)</h4>
+        <p style="font-size:0.82rem; color:var(--ink-2)">Recommended Action: Immediate clinical evaluation advised. Possible hypertension spike or cardiovascular strain.</p>
+      </div>
+    </div>
+    <div class="app-modal-foot"><div class="stats">Status: ICD-10 Triage Engine Ready</div><button class="btn btn-sage btn-sm" onclick="closeModuleModal('triage')">Close</button></div>
+  </div>
+</div>
+
+<!-- MODAL: APP MODULE 4 - TELEHEALTH -->
+<div class="modal" id="telehealth-modal">
+  <div class="app-modal-card" style="max-width:700px">
+    <div class="app-modal-head">
+      <div class="app-ico" style="background:linear-gradient(135deg,#4d8ea6,#a8d8e6)"><i class="fas fa-video"></i></div>
+      <div>
+        <h3>Telehealth Virtual Consultations</h3>
+        <p>Secure WebRTC video room for doctor-patient consultations.</p>
+      </div>
+      <button class="close-x" onclick="closeModuleModal('telehealth')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="app-modal-body" style="grid-template-columns:1fr">
+      <div style="background:#0f172a; border-radius:14px; height:240px; display:flex; flex-direction:column; align-items:center; justifyContent:center; color:#fff; position:relative">
+        <i class="fas fa-video" style="font-size:2.5rem; color:var(--mint-d); margin-bottom:10px"></i>
+        <div style="font-weight:700">Dr. Sarah Addo & Patient (Kofi Mensah)</div>
+        <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px">Secure Encrypted WebRTC Room #HV-9921</div>
+        <div style="position:absolute; bottom:12px; display:flex; gap:10px">
+          <button class="btn btn-danger btn-sm" onclick="alert('Call ended.')">End Call</button>
+          <button class="btn btn-sage btn-sm" onclick="alert('Microphone muted.')">Mute</button>
+        </div>
+      </div>
+    </div>
+    <div class="app-modal-foot"><div class="stats">Status: WebRTC Peer Connected</div><button class="btn btn-sage btn-sm" onclick="closeModuleModal('telehealth')">Close</button></div>
+  </div>
+</div>
+
+<!-- MODAL: APP MODULE 5 - EHR -->
+<div class="modal" id="ehr-modal">
+  <div class="app-modal-card" style="max-width:700px">
+    <div class="app-modal-head">
+      <div class="app-ico" style="background:linear-gradient(135deg,#5e8b7e,#7fa99b)"><i class="fas fa-file-medical-alt"></i></div>
+      <div>
+        <h3>Electronic Health Records (EHR) Vault</h3>
+        <p>Centralized patient clinical history, past diagnoses, and hospital files.</p>
+      </div>
+      <button class="close-x" onclick="closeModuleModal('ehr')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="app-modal-body" style="grid-template-columns:1fr">
+      <div class="field-grid" style="margin-bottom:12px">
+        <div class="field"><label>Patient</label><input type="text" value="Abena Serwaa"></div>
+        <div class="field"><label>Allergies</label><input type="text" value="Penicillin, Sulfa drugs"></div>
+      </div>
+      <div class="entry-row"><div class="top"><span class="badge">Diagnosis History</span><span class="time">Coronary Screening · All Clear (2026)</span></div></div>
+      <div class="entry-row"><div class="top"><span class="badge">Immunizations</span><span class="time">Tetanus Boost (Jan 2025), Hep B Complete</span></div></div>
+    </div>
+    <div class="app-modal-foot"><div class="stats">Status: HL7 / FHIR Standard Synchronized</div><button class="btn btn-sage btn-sm" onclick="closeModuleModal('ehr')">Close</button></div>
+  </div>
+</div>
+
+<!-- MODAL: APP MODULE 6 - PATHOLOGY -->
+<div class="modal" id="pathology-modal">
+  <div class="app-modal-card" style="max-width:700px">
+    <div class="app-modal-head">
+      <div class="app-ico" style="background:linear-gradient(135deg,#8a5a05,#fef1c9); color:#8a5a05"><i class="fas fa-flask"></i></div>
+      <div>
+        <h3>Pathology & Laboratory Results</h3>
+        <p>Blood panels, chemistry assays, and automated clinical flagging.</p>
+      </div>
+      <button class="close-x" onclick="closeModuleModal('pathology')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="app-modal-body" style="grid-template-columns:1fr">
+      <table class="hv-table">
+        <thead><tr><th>Test Panel</th><th>Result</th><th>Reference Range</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Fastings Blood Glucose</td><td><strong>5.8 mmol/L</strong></td><td>3.9 - 6.1 mmol/L</td><td><span class="pill ok">Normal</span></td></tr>
+          <tr><td>Serum Cholesterol</td><td><strong>6.4 mmol/L</strong></td><td>&lt; 5.2 mmol/L</td><td><span class="pill bad">High</span></td></tr>
+          <tr><td>Hemoglobin (Hb)</td><td><strong>13.8 g/dL</strong></td><td>13.5 - 17.5 g/dL</td><td><span class="pill ok">Normal</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="app-modal-foot"><div class="stats">Status: Lab Interface Connected</div><button class="btn btn-sage btn-sm" onclick="closeModuleModal('pathology')">Close</button></div>
+  </div>
+</div>
+
+<!-- FLOATING DOWNLOAD PANEL -->
+<div class="dl-panel" id="dl-panel">
+  <h4><i class="fas fa-file-code"></i> Project File Ready</h4>
+  <p>The complete <strong>HealthVitals Bio</strong> package has been prepared for export.</p>
+  <div class="acts">
+    <button class="btn btn-sage btn-sm" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Download CSV Logs</button>
+    <button class="btn btn-ghost btn-sm" onclick="closeDlPanel()">Dismiss</button>
+  </div>
+</div>
+
+<script>
+  let patients = [
+    { id: 1, name: 'Abena Serwaa', age: 29, gender: 'Female', phone: '+233 24 123 4567', token: 'FP-84920', condition: 'Normal Vitals' },
+    { id: 2, name: 'Kofi Mensah', age: 54, gender: 'Male', phone: '+233 20 987 6543', token: 'FP-39210', condition: 'Hypertension (Stage 2)' },
+    { id: 3, name: 'Ama Owusu', age: 38, gender: 'Female', phone: '+233 55 456 7890', token: 'FP-10482', condition: 'Tachycardia Alert' }
+  ];
+
+  let vitalsLogs = [
+    { logId: 101, patientId: 2, patientName: 'Kofi Mensah', type: 'BP', val1: 158, val2: 96, status: 'bad', time: '10:14 AM', notes: 'Post-exertion check' },
+    { logId: 102, patientId: 3, patientName: 'Ama Owusu', type: 'HR', val1: 104, val2: null, status: 'warn', time: '11:30 AM', notes: 'Elevated heart rate' },
+    { logId: 103, patientId: 1, patientName: 'Abena Serwaa', type: 'TEMP', val1: 36.6, val2: null, status: 'ok', time: '01:15 PM', notes: 'Routine check' }
+  ];
+
+  let activePatientId = 1;
+  let chartInstance = null;
+  let stepsHourlyChartInstance = null;
+  let stepsWeeklyChartInstance = null;
+
+  window.addEventListener('DOMContentLoaded', () => {
+    renderPatientList();
+    renderPatientsTable();
+    renderVitalsTable();
+    populatePatientSelects();
+    initCharts();
+    initStepsModule();
+  });
+
+  function toggleMobileMenu() {
+    const links = document.getElementById('mobile-nav-links');
+    links.classList.toggle('show');
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + tabId).style.display = 'block';
+    
+    document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if(btn.textContent.toLowerCase().includes(tabId.slice(0,4))) {
+        btn.classList.add('active');
+      }
+    });
+
+    if(tabId === 'dashboard') {
+      setTimeout(() => { if(chartInstance) chartInstance.update(); }, 50);
+    }
+  }
+
+  function renderPatientList() {
+    const container = document.getElementById('patient-list-container');
+    const searchVal = document.getElementById('patient-search').value.toLowerCase();
+    const filtered = patients.filter(p => p.name.toLowerCase().includes(searchVal) || p.token.toLowerCase().includes(searchVal));
+
+    document.getElementById('patient-count-badge').textContent = patients.length;
+    document.getElementById('stat-patients').textContent = patients.length;
+
+    container.innerHTML = filtered.map(p => {
+      let tagClass = 'ok', tagText = 'Stable';
+      if(p.condition.includes('Hypertension')) { tagClass = 'bad'; tagText = 'High BP'; }
+      else if(p.condition.includes('Tachycardia')) { tagClass = 'warn'; tagText = 'Elevated HR'; }
+      const isActive = p.id === activePatientId;
+      return `
+        <div class="p-row ${isActive ? 'active' : ''}" onclick="selectPatient(${p.id})">
+          <div class="p-avatar">${p.name.charAt(0)}</div>
+          <div class="p-info">
+            <div class="name">${p.name}</div>
+            <div class="meta">${p.token} · Age ${p.age}</div>
+          </div>
+          <span class="p-tag ${tagClass}">${tagText}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterPatients() { renderPatientList(); }
+
+  function selectPatient(id) {
+    activePatientId = id;
+    const p = patients.find(x => x.id === id);
+    if(p) {
+      document.getElementById('current-patient-name').textContent = `${p.name} (${p.token}) - ${p.condition}`;
+      document.getElementById('vitals-patient-id').value = p.id;
+    }
+    renderPatientList();
+    updateChartData();
+  }
+
+  function renderPatientsTable() {
+    document.getElementById('full-patient-table-body').innerHTML = patients.map(p => `
+      <tr>
+        <td><code>#P-${100 + p.id}</code></td>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.age} yrs / ${p.gender}</td>
+        <td><code>${p.phone}</code></td>
+        <td><code>${p.token}</code></td>
+        <td><span class="pill ${p.condition.includes('Normal') ? 'ok' : 'bad'}">${p.condition}</span></td>
+        <td style="text-align:right">
+          <button class="icon-btn" style="width:30px;height:30px" onclick="selectPatient(${p.id}); switchTab('dashboard')"><i class="fas fa-eye"></i></button>
+          <button class="icon-del" onclick="deletePatient(${p.id})"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderVitalsTable() {
+    document.getElementById('stat-logs').textContent = vitalsLogs.length;
+    document.getElementById('vitals-table-body').innerHTML = vitalsLogs.map(l => {
+      let valStr = l.val1;
+      if(l.type === 'BP') valStr = `${l.val1}/${l.val2} mmHg`;
+      else if(l.type === 'HR') valStr = `${l.val1} BPM`;
+      else if(l.type === 'TEMP') valStr = `${l.val1} °C`;
+      else if(l.type === 'SPO2') valStr = `${l.val1}%`;
+      else if(l.type === 'GLUCOSE') valStr = `${l.val1} mmol/L`;
+
+      return `
+        <tr>
+          <td><code>#LOG-${l.logId}</code></td>
+          <td><strong>${l.patientName}</strong></td>
+          <td><span class="pill" style="background:#eef6f3; color:var(--sage-d)">${l.type}</span></td>
+          <td><code>${valStr}</code></td>
+          <td><span class="pill ${l.status}">${l.status.toUpperCase()}</span></td>
+          <td><code>${l.time}</code></td>
+          <td>${l.notes || '-'}</td>
+          <td style="text-align:right"><button class="icon-del" onclick="deleteLog(${l.logId})"><i class="fas fa-trash"></i></button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function populatePatientSelects() {
+    const sel = document.getElementById('vitals-patient-id');
+    sel.innerHTML = patients.map(p => `<option value="${p.id}">${p.name} (${p.token})</option>`).join('');
+    if(patients.length > 0) sel.value = activePatientId;
+  }
+
+  function triggerBiometricScan() {
+    const ring = document.getElementById('fp-scanner');
+    const icon = document.getElementById('fp-icon');
+    const hint = document.getElementById('fp-hint');
+    const bar = document.getElementById('fp-progress');
+
+    ring.classList.add('scanning');
+    icon.className = 'fas fa-spinner fa-spin';
+    hint.textContent = 'Scanning fingerprint...';
+    bar.style.width = '50%';
+
+    setTimeout(() => {
+      ring.classList.remove('scanning');
+      ring.classList.add('success');
+      icon.className = 'fas fa-check';
+      hint.textContent = 'Patient authenticated!';
+      bar.style.width = '100%';
+
+      activePatientId = (activePatientId % patients.length) + 1;
+      selectPatient(activePatientId);
+
+      setTimeout(() => {
+        ring.classList.remove('success');
+        icon.className = 'fas fa-fingerprint';
+        hint.textContent = 'Click sensor to scan ID';
+        bar.style.width = '0%';
+      }, 1500);
+    }, 1200);
+  }
+
+  function toggleMetricInputs() {
+    const type = document.getElementById('vitals-type').value;
+    const f1 = document.getElementById('field-val-1');
+    const f2 = document.getElementById('field-val-2');
+
+    if(type === 'BP') {
+      f1.querySelector('label').textContent = 'Systolic (mmHg)';
+      f2.style.display = 'block';
+      f2.querySelector('input').required = true;
+    } else {
+      f2.style.display = 'none';
+      f2.querySelector('input').required = false;
+      if(type === 'HR') f1.querySelector('label').textContent = 'Heart Rate (BPM)';
+      else if(type === 'TEMP') f1.querySelector('label').textContent = 'Temperature (°C)';
+      else if(type === 'SPO2') f1.querySelector('label').textContent = 'Blood Oxygen (%)';
+      else if(type === 'GLUCOSE') f1.querySelector('label').textContent = 'Glucose (mmol/L)';
+    }
+  }
+
+  function submitVitals(e) {
+    e.preventDefault();
+    const pid = parseInt(document.getElementById('vitals-patient-id').value);
+    const p = patients.find(x => x.id === pid);
+    const type = document.getElementById('vitals-type').value;
+    const val1 = parseFloat(document.getElementById('vitals-val1').value);
+    const val2 = type === 'BP' ? parseFloat(document.getElementById('vitals-val2').value) : null;
+    const notes = document.getElementById('vitals-notes').value;
+
+    let status = 'ok';
+    if(type === 'BP' && (val1 > 140 || (val2 && val2 > 90))) status = 'bad';
+    else if(type === 'TEMP' && val1 > 38.0) status = 'bad';
+
+    const newLog = {
+      logId: vitalsLogs.length > 0 ? Math.max(...vitalsLogs.map(l => l.logId)) + 1 : 101,
+      patientId: pid, patientName: p ? p.name : 'Unknown',
+      type, val1, val2, status,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      notes
+    };
+
+    vitalsLogs.unshift(newLog);
+    renderVitalsTable();
+    updateChartData();
+    document.getElementById('vitals-form').reset();
+    toggleMetricInputs();
+    alert(`Success! Vitals logged for ${newLog.patientName}.`);
+  }
+
+  function deleteLog(logId) {
+    vitalsLogs = vitalsLogs.filter(l => l.logId !== logId);
+    renderVitalsTable();
+    updateChartData();
+  }
+
+  function confirmClearLogs() { document.getElementById('clear-confirm-bar').classList.add('show'); }
+  function cancelClearLogs() { document.getElementById('clear-confirm-bar').classList.remove('show'); }
+  function executeClearLogs() {
+    vitalsLogs = [];
+    renderVitalsTable();
+    updateChartData();
+    cancelClearLogs();
+  }
+
+  function initCharts() {
+    const ctx = document.getElementById('vitalsChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['08:00 AM', '10:00 AM', '12:00 PM', '02:00 PM', '04:00 PM', 'Now'],
+        datasets: [{
+          label: 'Systolic BP (mmHg)',
+          data: [120, 125, 130, 128, 135, 126],
+          borderColor: '#5e8b7e',
+          backgroundColor: 'rgba(127,169,155,0.1)',
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'bottom' } },
+        scales: { y: { grid: { color: '#e4eeeb' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  function updateChartData() {
+    const metric = document.getElementById('chart-metric-select').value;
+    const pLogs = vitalsLogs.filter(l => l.patientId === activePatientId);
+    let labels = pLogs.map(l => l.time).reverse();
+    let data = pLogs.map(l => l.val1).reverse();
+    let labelName = 'Recorded Value';
+
+    if(metric === 'bp') { data = pLogs.filter(l => l.type === 'BP').map(l => l.val1).reverse(); labelName = 'Systolic BP (mmHg)'; }
+    else if(metric === 'hr') { data = pLogs.filter(l => l.type === 'HR').map(l => l.val1).reverse(); labelName = 'Heart Rate (BPM)'; }
+    else if(metric === 'temp') { data = pLogs.filter(l => l.type === 'TEMP').map(l => l.val1).reverse(); labelName = 'Temperature (°C)'; }
+
+    if(data.length === 0) { labels = ['Mon', 'Tue', 'Wed', 'Thu']; data = [120, 122, 119, 124]; }
+
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets[0].label = labelName;
+    chartInstance.data.datasets[0].data = data;
+    chartInstance.update();
+  }
+
+  function openAddPatientModal() { document.getElementById('patient-modal').classList.add('show'); }
+  function closeAddPatientModal() { document.getElementById('patient-modal').classList.remove('show'); }
+  function saveNewPatient() {
+    const name = document.getElementById('new-p-name').value;
+    const age = parseInt(document.getElementById('new-p-age').value);
+    const gender = document.getElementById('new-p-gender').value;
+    const phone = document.getElementById('new-p-phone').value;
+    const condition = document.getElementById('new-p-cond').value || 'New Admission';
+
+    if(!name || !age || !phone) { alert('Please fill in required fields.'); return; }
+
+    patients.push({
+      id: patients.length + 1,
+      name, age, gender, phone,
+      token: 'FP-' + Math.floor(10000 + Math.random() * 90000),
+      condition
+    });
+    renderPatientList();
+    renderPatientsTable();
+    populatePatientSelects();
+    closeAddPatientModal();
+    alert(`Patient ${name} registered successfully!`);
+  }
+
+  function deletePatient(id) {
+    if(confirm('Delete patient?')) {
+      patients = patients.filter(p => p.id !== id);
+      renderPatientList();
+      renderPatientsTable();
+    }
+  }
+
+  function openModuleModal(mod) {
+    document.getElementById(mod + '-modal').classList.add('show');
+    if(mod === 'steps') {
+      const phone = document.getElementById('walk-phone-container');
+      phone.style.opacity = '1';
+      phone.style.transform = 'none';
+      document.getElementById('steps-modal-body').style.gridTemplateColumns = '280px 1fr';
+      updateStepDisplay();
+      setTimeout(() => { initStepsCharts(); }, 100);
+    }
+  }
+
+  function closeModuleModal(mod) {
+    document.getElementById(mod + '-modal').classList.remove('show');
+    if(mod === 'steps' && isWalking) toggleWalkingSimulation();
+  }
+
+  let stepCount = 4820;
+  let isWalking = false;
+  let walkInterval = null;
+  let stepEntries = [
+    { id: 1, steps: 2400, time: '08:30 AM', status: 'Synced' },
+    { id: 2, steps: 1800, time: '12:15 PM', status: 'Synced' }
+  ];
+
+  function toggleWalkingSimulation() {
+    isWalking = !isWalking;
+    const btn = document.getElementById('walk-action-btn');
+    const btnIcon = btn.querySelector('i');
+
+    if(isWalking) {
+      btn.classList.add('active');
+      btnIcon.className = 'fas fa-pause';
+      walkInterval = setInterval(() => {
+        stepCount += Math.floor(15 + Math.random() * 25);
+        updateStepDisplay();
+      }, 300);
+    } else {
+      btn.classList.remove('active');
+      btnIcon.className = 'fas fa-play';
+      clearInterval(walkInterval);
+    }
+  }
+
+  function updateStepDisplay() {
+    const pct = Math.min(100, Math.round((stepCount / 8000) * 100));
+    document.getElementById('phone-steps-display').innerHTML = `${stepCount.toLocaleString()}<small>Steps Today</small>`;
+    document.getElementById('phone-progress-bar').style.width = pct + '%';
+    document.getElementById('walk-dist-val').textContent = (stepCount * 0.00075).toFixed(2) + ' km';
+    document.getElementById('walk-cal-val').textContent = Math.round(stepCount * 0.051) + ' kcal';
+    document.getElementById('walk-pct-val').textContent = pct + '%';
+  }
+
+  function resetSteps() { stepCount = 0; updateStepDisplay(); }
+
+  function syncStepsToDB() {
+    stepEntries.unshift({
+      id: stepEntries.length + 1,
+      steps: stepCount,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'Synced'
+    });
+    renderStepEntries();
+
+    const phoneContainer = document.getElementById('walk-phone-container');
+    phoneContainer.style.opacity = '0.4';
+    phoneContainer.style.transform = 'scale(0.9) translateY(-10px)';
+    document.getElementById('steps-modal-body').style.gridTemplateColumns = '120px 1fr';
+
+    document.getElementById('steps-sync-status').textContent = `Synced ${stepCount} steps to MySQL database.`;
+    alert(`Successfully synced ${stepCount} steps! Graph analytics view expanded.`);
+  }
+
+  function addManualSteps() {
+    const val = parseInt(document.getElementById('manual-steps-input').value);
+    if(!val || val <= 0) { alert('Enter valid step count.'); return; }
+    stepCount += val;
+    updateStepDisplay();
+    document.getElementById('manual-steps-input').value = '';
+    syncStepsToDB();
+  }
+
+  function renderStepEntries() {
+    document.getElementById('steps-entries-list').innerHTML = stepEntries.map(e => `
+      <div class="entry-row">
+        <div class="top"><span class="badge">#${e.id} - ${e.steps.toLocaleString()} Steps</span><span class="time">${e.time}</span></div>
+      </div>
+    `).join('');
+  }
+
+  function initStepsCharts() {
+    renderStepEntries();
+    const ctxH = document.getElementById('stepsHourlyChart').getContext('2d');
+    if(stepsHourlyChartInstance) stepsHourlyChartInstance.destroy();
+    stepsHourlyChartInstance = new Chart(ctxH, {
+      type: 'bar',
+      data: { labels: ['8am', '10am', '12pm', '2pm', '4pm', '6pm'], datasets: [{ data: [850, 1200, 1450, 900, 1100, 600], backgroundColor: '#7fa99b', borderRadius: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#e4eeeb' } }, x: { grid: { display: false } } } }
+    });
+
+    const ctxW = document.getElementById('stepsWeeklyChart').getContext('2d');
+    if(stepsWeeklyChartInstance) stepsWeeklyChartInstance.destroy();
+    stepsWeeklyChartInstance = new Chart(ctxW, {
+      type: 'line',
+      data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ data: [7200, 8400, 6900, 9100, 8800, 10200, 7500], borderColor: '#4d8ea6', backgroundColor: 'rgba(168,216,230,0.15)', fill: true, tension: 0.3 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#e4eeeb' } }, x: { grid: { display: false } } } }
+    });
+  }
+
+  function addPrescription() {
+    const name = document.getElementById('med-name').value;
+    const freq = document.getElementById('med-freq').value;
+    if(!name) { alert('Enter medication name.'); return; }
+    const list = document.getElementById('meds-list');
+    list.innerHTML += `<div class="entry-row"><div class="top"><span class="badge">${name}</span><span class="time">${freq} · 95% Adherence</span></div></div>`;
+    document.getElementById('med-name').value = '';
+    alert('Prescription added successfully.');
+  }
+
+  function runTriageAI() {
+    const val = document.getElementById('triage-input').value;
+    if(!val) { alert('Enter symptoms.'); return; }
+    document.getElementById('triage-result').style.display = 'block';
+  }
+
+  function refreshData() { renderPatientList(); renderVitalsTable(); alert('Data refreshed.'); }
+  function exportData() { document.getElementById('dl-panel').classList.add('show'); }
+  function closeDlPanel() { document.getElementById('dl-panel').classList.remove('show'); }
+
+  function exportCSV() {
+    if (vitalsLogs.length === 0) { alert('No vitals logs available.'); return; }
+    let csvRows = [['LogID', 'PatientName', 'Metric', 'Value1', 'Value2', 'Status', 'Timestamp', 'Notes'].join(',')];
+    vitalsLogs.forEach(l => {
+      csvRows.push([`#LOG-${l.logId}`, `"${l.patientName}"`, l.type, l.val1, l.val2 !== null ? l.val2 : '', l.status.toUpperCase(), `"${l.time}"`, `"${(l.notes || '').replace(/"/g, '""')}"`].join(','));
+    });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `HealthVitals_Report_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    closeDlPanel();
+  }
+</script>
+
+</body>
+</html>
